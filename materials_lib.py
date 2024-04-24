@@ -100,45 +100,31 @@ class MaterialsFile:
 
     def ci_setup(self):
         os.chdir(self.directory)
-        #Get rid of nearly identical file names to avoid errors
-        for file in os.listdir("."):
-            if "ci_reorder" in file & "_all" not in file:
-                new_name = "min_max"
-                os.rename(file, new_name)
-        #Gather up file names
         today = datetime.now().date()
-        dfs = []
+        ci_df_list = []
+        categories = ["min_max", "ci_reorder", "ci_shortage", "CTB_", "OHB_report", "Open PO", "Production Report"]
+        
+        processed_files = []  # Keep track of files processed to avoid double processing
 
-        #Iterate through files and instantiate them as dataframes
         for file in os.listdir():
             file_path = os.path.join(self.directory, file)
             last_modified_date = datetime.fromtimestamp(os.path.getmtime(file_path)).date()
-            if last_modified_date == today:
-                if "min_max" in file:
-                    min_max = self.open_file(file)
-                    dfs.append(min_max)
-                
-                elif "ci_reorder" in file:
-                    ci_report = self.open_file(file)
-                    dfs.append(ci_report)
-                
-                elif "ci_shortage" in file:
-                    shortage_report = self.open_file(file)
-                    dfs.append(shortage_report)
-                
-                elif "CTB_" in file:
-                    ctb_report = self.open_file(file)
-                    dfs.append(ctb_report)
-                
-                elif "OHB_report" in file:
-                    ohb_report = self.open_file(file)
-                    dfs.append(ohb_report)
-                
-                elif "Open PO" in file:
-                    open_po_report = self.open_file(file)
-                    dfs.append(open_po_report)
-                
-                elif "Production Report" in file:
-                    recent_production = self.open_file(file)
-                    dfs.append(recent_production)
 
+            if last_modified_date == today:
+                # Rename files as needed
+                if "ci_reorder" in file and "_all" not in file:
+                    new_name = "min_max.csv"
+                    os.rename(file, new_name)
+                    file = new_name  # Continue processing with the new name
+            
+                if file not in processed_files:  # Check if file has not been processed
+                    for category in categories:
+                        if category in file:
+                            df = self.open_file(file)
+                            if df is not None:
+                                ci_df_list.append(df)
+                                processed_files.append(file)  # Mark as processed
+
+        if len(ci_df_list) < 7:
+            raise ValueError("You are missing a file for CI operations. Please check your downloads and ensure all files are present")
+        return ci_df_list
